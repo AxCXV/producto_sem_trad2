@@ -1,99 +1,129 @@
-# lexer.py
+import tkinter as tk
+from tkinter import scrolledtext
 
-import re
-from lexer_config import is_keyword, is_operator, is_symbol, is_primitive_type
-
+# Definición de tipos de token en español
 class TokenType:
-    IDENTIFIER = 'IDENTIFIER'
-    NUMBER = 'NUMBER'
-    OPERATOR = 'OPERATOR'
-    KEYWORD = 'KEYWORD'
-    SYMBOL = 'SYMBOL'
-    COMMENT = 'COMMENT'
-    WHITESPACE = 'WHITESPACE'
-    PRIMITIVE_TYPE = 'PRIMITIVE_TYPE'
-    UNKNOWN = 'UNKNOWN'
+    IDENTIFIER = 'IDENTIFICADOR'  # Representa un identificador (como nombres de variables)
+    NUMBER = 'NÚMERO'              # Representa un número (entero o decimal)
+    OPERATOR = 'OPERADOR'          # Representa operadores (como +, -, *, /)
+    KEYWORD = 'PALABRA_CLAVE'      # Representa palabras clave del lenguaje (como int, if, return)
+    SYMBOL = 'SÍMBOLO'             # Representa símbolos (como (, ), {, }, ;, ,)
+    COMMENT = 'COMENTARIO'         # Representa comentarios (como // comentario)
+    WHITESPACE = 'ESPACIO_EN_BLANCO' # Representa espacios, tabulaciones y saltos de línea
+    UNKNOWN = 'DESCONOCIDO'        # Representa caracteres desconocidos o no reconocidos
 
+# Clase para representar un token
 class Token:
     def __init__(self, type_, value):
-        self.type = type_
-        self.value = value
+        self.type = type_  # Tipo de token
+        self.value = value  # Valor del token
 
     def __str__(self):
-        return f"Token(type={self.type}, value='{self.value}')"
+        return f"Token(tipo={self.type}, valor='{self.value}')"
 
+# Clase Lexer para el análisis léxico
 class Lexer:
     def __init__(self, text):
-        self.text = text
-        self.pos = 0
+        self.text = text  # Código fuente como texto
+        self.pos = 0  # Posición actual en el texto
 
     def next_token(self):
         while self.pos < len(self.text):
-            current_char = self.text[self.pos]
+            current_char = self.text[self.pos]  # Obtener el carácter actual
 
-            # Skip whitespace
+            # Saltar espacios en blanco
             if current_char.isspace():
                 self.pos += 1
                 continue
 
-            # Handle comments (simple case with `//`)
+            # Manejar comentarios de línea
             if current_char == '/' and self.pos + 1 < len(self.text) and self.text[self.pos + 1] == '/':
                 start = self.pos
                 while self.pos < len(self.text) and self.text[self.pos] != '\n':
                     self.pos += 1
                 return Token(TokenType.COMMENT, self.text[start:self.pos])
 
-            # Handle primitive types
+            # Manejar identificadores y palabras clave
             if current_char.isalpha() or current_char == '_':
                 start = self.pos
                 while self.pos < len(self.text) and (self.text[self.pos].isalnum() or self.text[self.pos] == '_'):
                     self.pos += 1
                 identifier = self.text[start:self.pos]
-                if is_keyword(identifier):
+                # Considerar algunas palabras clave
+                if identifier in {'int', 'float', 'return', 'void', 'if', 'else', 'while'}:
                     return Token(TokenType.KEYWORD, identifier)
-                if is_primitive_type(identifier):
-                    return Token(TokenType.PRIMITIVE_TYPE, identifier)
                 return Token(TokenType.IDENTIFIER, identifier)
 
-            # Numbers (integers and real numbers)
+            # Manejar números
             if current_char.isdigit():
                 start = self.pos
-                while self.pos < len(self.text) and (self.text[self.pos].isdigit() or self.text[self.pos] == '.'):
+                while self.pos < len(self.text) and self.text[self.pos].isdigit():
                     self.pos += 1
                 number = self.text[start:self.pos]
                 return Token(TokenType.NUMBER, number)
 
-            # Operators and Symbols
-            if current_char in '+-*/%$&|!':
-                start = self.pos
-                while self.pos < len(self.text) and (self.text[self.pos] in '+-*/%$&|!'):
-                    self.pos += 1
-                op = self.text[start:self.pos]
-                if is_operator(op):
-                    return Token(TokenType.OPERATOR, op)
-                if is_symbol(op):
-                    return Token(TokenType.SYMBOL, op)
-                return Token(TokenType.UNKNOWN, op)
+            # Manejar operadores
+            if current_char in {'+', '-', '*', '/', '=', '>', '<', '!', '==', '!='}:
+                self.pos += 1
+                return Token(TokenType.OPERATOR, current_char)
 
-            if current_char in '(){};,':
+            # Manejar símbolos
+            if current_char in {'(', ')', '{', '}', ';', ','}:
                 self.pos += 1
                 return Token(TokenType.SYMBOL, current_char)
 
-            # Unknown character
+            # Si se encuentra un carácter desconocido
             self.pos += 1
             return Token(TokenType.UNKNOWN, current_char)
 
-        return Token(TokenType.UNKNOWN, '')
+        return Token(TokenType.UNKNOWN, '')  # Fin del texto
 
-def main():
-    text = input("Ingrese el texto para analizar: ")
-    lexer = Lexer(text)
-    token = lexer.next_token()
+# Clase para la interfaz de usuario
+class LexerApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Analizador Léxico")
+        self.root.geometry("1280x720")  # Tamaño de la ventana fijada
 
-    while token.type != TokenType.UNKNOWN:
-        if token.type != TokenType.COMMENT:
-            print(token)
+        # Configurar los componentes de la interfaz
+        self.setup_widgets()
+
+    def setup_widgets(self):
+        # Etiqueta y cuadro de texto para entrada de código
+        tk.Label(self.root, text="Ingrese el código:").pack(pady=5)
+        self.input_text = scrolledtext.ScrolledText(self.root, height=15, width=80)
+        self.input_text.pack(pady=5)
+
+        # Etiqueta y cuadro de texto para mostrar tokens encontrados
+        tk.Label(self.root, text="Tokens encontrados:").pack(pady=5)
+        self.output_text = scrolledtext.ScrolledText(self.root, height=15, width=80)
+        self.output_text.pack(pady=5)
+
+        # Botón para iniciar el análisis
+        tk.Button(self.root, text="Analizar", command=self.analyze).pack(pady=10)
+
+    def analyze(self):
+        code = self.input_text.get("1.0", tk.END)  # Obtener el código de entrada
+        lexer = Lexer(code)  # Crear una instancia de Lexer
+
+        # Limpiar la salida anterior
+        self.output_text.delete("1.0", tk.END)
+
+        # Obtener el siguiente token
         token = lexer.next_token()
+        while token.type != TokenType.UNKNOWN:
+            self.output_text.insert(tk.END, str(token) + '\n')  # Mostrar el token
+            token = lexer.next_token()  # Obtener el siguiente token
 
-if __name__ == '__main__':
-    main()
+# Ejecución de la aplicación
+if __name__ == "__main__":
+    root = tk.Tk()  # Crear la ventana principal
+    app = LexerApp(root)  # Crear la aplicación
+    root.mainloop()  # Iniciar el bucle de eventos
+
+# Int void() {
+# while (true) {
+# if (true)
+# return;
+# }
+# }
