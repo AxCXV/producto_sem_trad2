@@ -1,0 +1,7 @@
+int main(){
+    float promedio;
+    float precio;
+    precio = 10;
+    promedio = 20;
+    float resultado = promedio+precio;
+}
